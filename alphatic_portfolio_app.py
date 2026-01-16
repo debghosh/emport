@@ -1680,6 +1680,151 @@ with tab2:
         </div>
     """, unsafe_allow_html=True)
     
+    # Monthly Income/Gains Table
+    st.markdown("---")
+    st.markdown("### 💰 Monthly Income Analysis")
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.markdown("**Calculate dollar gains/losses per month based on portfolio value**")
+    
+    with col2:
+        initial_capital = st.number_input(
+            "Initial Portfolio Value ($)", 
+            min_value=1000, 
+            max_value=100000000, 
+            value=100000, 
+            step=10000,
+            help="Enter your starting portfolio value to see dollar gains/losses"
+        )
+    
+    # Calculate monthly dollar gains
+    returns_series = portfolio_returns if isinstance(portfolio_returns, pd.Series) else portfolio_returns.iloc[:, 0]
+    monthly_returns = returns_series.resample('M').apply(lambda x: (1 + x).prod() - 1)
+    
+    # Calculate cumulative value and monthly dollar gains
+    cumulative_value = initial_capital
+    monthly_data = []
+    
+    for date, monthly_return in monthly_returns.items():
+        month_start_value = cumulative_value
+        dollar_gain = month_start_value * monthly_return
+        cumulative_value = month_start_value + dollar_gain
+        
+        monthly_data.append({
+            'Date': date.strftime('%Y-%m'),
+            'Month': date.strftime('%B'),
+            'Year': date.year,
+            'Return %': monthly_return * 100,
+            'Dollar Gain/Loss': dollar_gain,
+            'Portfolio Value': cumulative_value
+        })
+    
+    monthly_df = pd.DataFrame(monthly_data)
+    
+    # Display options
+    view_option = st.radio(
+        "View:",
+        ["Last 12 Months", "Current Year", "All Time", "By Year"],
+        horizontal=True
+    )
+    
+    if view_option == "Last 12 Months":
+        display_df = monthly_df.tail(12).copy()
+    elif view_option == "Current Year":
+        current_year = datetime.now().year
+        display_df = monthly_df[monthly_df['Year'] == current_year].copy()
+    elif view_option == "By Year":
+        selected_year = st.selectbox("Select Year:", sorted(monthly_df['Year'].unique(), reverse=True))
+        display_df = monthly_df[monthly_df['Year'] == selected_year].copy()
+    else:  # All Time
+        display_df = monthly_df.copy()
+    
+    # Format for display
+    display_df['Return %'] = display_df['Return %'].apply(lambda x: f"{x:+.2f}%")
+    display_df['Dollar Gain/Loss'] = display_df['Dollar Gain/Loss'].apply(lambda x: f"${x:+,.2f}")
+    display_df['Portfolio Value'] = display_df['Portfolio Value'].apply(lambda x: f"${x:,.2f}")
+    
+    st.dataframe(
+        display_df[['Date', 'Month', 'Return %', 'Dollar Gain/Loss', 'Portfolio Value']],
+        use_container_width=True,
+        hide_index=True
+    )
+    
+    # Summary statistics
+    st.markdown("#### 📊 Income Summary")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    total_gain = monthly_df['Dollar Gain/Loss'].sum()
+    positive_months = (monthly_df['Dollar Gain/Loss'] > 0).sum()
+    negative_months = (monthly_df['Dollar Gain/Loss'] < 0).sum()
+    avg_monthly_gain = monthly_df['Dollar Gain/Loss'].mean()
+    
+    with col1:
+        st.metric(
+            "Total Gain/Loss",
+            f"${total_gain:,.2f}",
+            f"{((cumulative_value - initial_capital) / initial_capital * 100):+.2f}%"
+        )
+    
+    with col2:
+        st.metric(
+            "Avg Monthly Gain",
+            f"${avg_monthly_gain:,.2f}"
+        )
+    
+    with col3:
+        st.metric(
+            "Positive Months",
+            f"{positive_months}",
+            f"{positive_months / len(monthly_df) * 100:.1f}%"
+        )
+    
+    with col4:
+        st.metric(
+            "Negative Months",
+            f"{negative_months}",
+            f"{negative_months / len(monthly_df) * 100:.1f}%"
+        )
+    
+    # Tax planning insights
+    st.markdown("---")
+    st.info("""
+        **💡 Tax Planning Tips:**
+        - **Short-term gains** (held <1 year): Taxed as ordinary income (10-37%)
+        - **Long-term gains** (held >1 year): Lower rates (0%, 15%, or 20%)
+        - **Tax-loss harvesting**: Negative months can offset gains if you have other taxable gains
+        - **Wash sale rule**: Can't repurchase same security within 30 days when harvesting losses
+        - **Consult a CPA**: This is for planning only - not tax advice!
+    """)
+    
+    # Monthly income interpretation
+    st.markdown("""
+        <div class="interpretation-box">
+            <div class="interpretation-title">💡 How to Use Monthly Income Data</div>
+            <p><strong>For Retirement Planning:</strong></p>
+            <ul>
+                <li>Look at average monthly gain - is it enough to live on?</li>
+                <li>Check volatility - can you handle the negative months?</li>
+                <li>Win rate above 60% = more consistent income</li>
+            </ul>
+            <p><strong>For Tax Planning:</strong></p>
+            <ul>
+                <li>December losses? Good time to harvest for tax deduction</li>
+                <li>Big gains in one month? Might push you into higher bracket</li>
+                <li>Spread gains over multiple years if possible</li>
+            </ul>
+            <p><strong>For Strategy Evaluation:</strong></p>
+            <ul>
+                <li>Are monthly gains getting bigger or smaller over time?</li>
+                <li>Do gains cluster in certain months (seasonality)?</li>
+                <li>Can you emotionally handle the worst months?</li>
+            </ul>
+        </div>
+    """, unsafe_allow_html=True)
+    
     # Rolling Metrics
     st.markdown("---")
     st.markdown("### 📈 Rolling Risk-Adjusted Performance")
