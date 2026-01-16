@@ -1523,49 +1523,113 @@ with tab1:
     
     # Key Metrics
     st.markdown("---")
-    st.markdown("### 🎯 Key Performance Metrics")
+    st.markdown("### 🎯 Key Performance Metrics vs S&P 500")
     
+    # Calculate SPY metrics for comparison
+    try:
+        spy_data = download_ticker_data(['SPY'], current['start_date'], current['end_date'])
+        if spy_data is not None:
+            spy_returns = spy_data.pct_change().dropna()
+            spy_metrics = calculate_portfolio_metrics(spy_returns)
+        else:
+            spy_metrics = None
+    except:
+        spy_metrics = None
+    
+    # Helper function to get comparison arrow and color
+    def get_comparison_indicator(portfolio_value, spy_value, metric_type='higher_better'):
+        """
+        Returns arrow emoji and color based on comparison
+        metric_type: 'higher_better' or 'lower_better'
+        """
+        if spy_metrics is None:
+            return "", "white"
+        
+        if metric_type == 'higher_better':
+            if portfolio_value > spy_value:
+                return "🟢 ↑", "#28a745"  # Green up arrow
+            elif portfolio_value < spy_value:
+                return "🔴 ↓", "#dc3545"  # Red down arrow
+            else:
+                return "⚪ →", "#ffc107"  # Yellow equal
+        else:  # lower_better (for volatility, drawdown)
+            if portfolio_value < spy_value:
+                return "🟢 ↑", "#28a745"  # Green up arrow (lower is better)
+            elif portfolio_value > spy_value:
+                return "🔴 ↓", "#dc3545"  # Red down arrow (higher is worse)
+            else:
+                return "⚪ →", "#ffc107"  # Yellow equal
+    
+    # First row of metrics
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         metric_class = get_metric_color_class('annual_return', metrics['Annual Return'])
+        arrow, color = get_comparison_indicator(metrics['Annual Return'], 
+                                               spy_metrics['Annual Return'] if spy_metrics else 0, 
+                                               'higher_better')
         st.markdown(f"""
             <div class="{metric_class}">
-                <h4>Annual Return</h4>
+                <h4>Annual Return {arrow}</h4>
                 <h2>{metrics['Annual Return']:.2%}</h2>
+                <p style="font-size: 0.9em; color: #888;">SPY: {spy_metrics['Annual Return']:.2%}</p>
             </div>
         """, unsafe_allow_html=True)
         render_metric_explanation('annual_return')
     
     with col2:
         metric_class = get_metric_color_class('sharpe_ratio', metrics['Sharpe Ratio'])
+        arrow, color = get_comparison_indicator(metrics['Sharpe Ratio'], 
+                                               spy_metrics['Sharpe Ratio'] if spy_metrics else 0, 
+                                               'higher_better')
         st.markdown(f"""
             <div class="{metric_class}">
-                <h4>Sharpe Ratio</h4>
+                <h4>Sharpe Ratio {arrow}</h4>
                 <h2>{metrics['Sharpe Ratio']:.2f}</h2>
+                <p style="font-size: 0.9em; color: #888;">SPY: {spy_metrics['Sharpe Ratio']:.2f}</p>
             </div>
         """, unsafe_allow_html=True)
         render_metric_explanation('sharpe_ratio')
     
     with col3:
         metric_class = get_metric_color_class('max_drawdown', metrics['Max Drawdown'])
+        arrow, color = get_comparison_indicator(metrics['Max Drawdown'], 
+                                               spy_metrics['Max Drawdown'] if spy_metrics else 0, 
+                                               'lower_better')
         st.markdown(f"""
             <div class="{metric_class}">
-                <h4>Max Drawdown</h4>
+                <h4>Max Drawdown {arrow}</h4>
                 <h2>{metrics['Max Drawdown']:.2%}</h2>
+                <p style="font-size: 0.9em; color: #888;">SPY: {spy_metrics['Max Drawdown']:.2%}</p>
             </div>
         """, unsafe_allow_html=True)
         render_metric_explanation('max_drawdown')
     
     with col4:
         metric_class = get_metric_color_class('volatility', metrics['Annual Volatility'])
+        arrow, color = get_comparison_indicator(metrics['Annual Volatility'], 
+                                               spy_metrics['Annual Volatility'] if spy_metrics else 0, 
+                                               'lower_better')
         st.markdown(f"""
             <div class="{metric_class}">
-                <h4>Volatility</h4>
+                <h4>Volatility {arrow}</h4>
                 <h2>{metrics['Annual Volatility']:.2%}</h2>
+                <p style="font-size: 0.9em; color: #888;">SPY: {spy_metrics['Annual Volatility']:.2%}</p>
             </div>
         """, unsafe_allow_html=True)
         render_metric_explanation('volatility')
+    
+    # Add comparison legend
+    st.markdown("""
+        <div style="text-align: center; padding: 10px; margin-top: 10px; background: #f8f9fa; border-radius: 5px;">
+            <small>
+                <strong>Comparison Legend:</strong>  
+                🟢 ↑ = Your portfolio is BETTER than S&P 500  |  
+                🔴 ↓ = Your portfolio is WORSE than S&P 500  |  
+                ⚪ → = Equal performance
+            </small>
+        </div>
+    """, unsafe_allow_html=True)
     
     # Additional metrics
     st.markdown("---")
@@ -1573,39 +1637,55 @@ with tab1:
     
     with col1:
         metric_class = get_metric_color_class('sortino_ratio', metrics['Sortino Ratio'])
+        arrow, color = get_comparison_indicator(metrics['Sortino Ratio'], 
+                                               spy_metrics['Sortino Ratio'] if spy_metrics else 0, 
+                                               'higher_better')
         st.markdown(f"""
             <div class="{metric_class}">
-                <h4>Sortino Ratio</h4>
+                <h4>Sortino Ratio {arrow}</h4>
                 <h2>{metrics['Sortino Ratio']:.2f}</h2>
+                <p style="font-size: 0.9em; color: #888;">SPY: {spy_metrics['Sortino Ratio']:.2f}</p>
             </div>
         """, unsafe_allow_html=True)
         render_metric_explanation('sortino_ratio')
     
     with col2:
         metric_class = get_metric_color_class('calmar_ratio', metrics['Calmar Ratio'])
+        arrow, color = get_comparison_indicator(metrics['Calmar Ratio'], 
+                                               spy_metrics['Calmar Ratio'] if spy_metrics else 0, 
+                                               'higher_better')
         st.markdown(f"""
             <div class="{metric_class}">
-                <h4>Calmar Ratio</h4>
+                <h4>Calmar Ratio {arrow}</h4>
                 <h2>{metrics['Calmar Ratio']:.2f}</h2>
+                <p style="font-size: 0.9em; color: #888;">SPY: {spy_metrics['Calmar Ratio']:.2f}</p>
             </div>
         """, unsafe_allow_html=True)
         render_metric_explanation('calmar_ratio')
     
     with col3:
         metric_class = get_metric_color_class('win_rate', metrics['Win Rate'])
+        arrow, color = get_comparison_indicator(metrics['Win Rate'], 
+                                               spy_metrics['Win Rate'] if spy_metrics else 0, 
+                                               'higher_better')
         st.markdown(f"""
             <div class="{metric_class}">
-                <h4>Win Rate</h4>
+                <h4>Win Rate {arrow}</h4>
                 <h2>{metrics['Win Rate']:.2%}</h2>
+                <p style="font-size: 0.9em; color: #888;">SPY: {spy_metrics['Win Rate']:.2%}</p>
             </div>
         """, unsafe_allow_html=True)
         render_metric_explanation('win_rate')
     
     with col4:
+        arrow, color = get_comparison_indicator(metrics['Total Return'], 
+                                               spy_metrics['Total Return'] if spy_metrics else 0, 
+                                               'higher_better')
         st.markdown(f"""
             <div class="metric-card">
-                <h4>Total Return</h4>
+                <h4>Total Return {arrow}</h4>
                 <h2>{metrics['Total Return']:.2%}</h2>
+                <p style="font-size: 0.9em; color: #888;">SPY: {spy_metrics['Total Return']:.2%}</p>
             </div>
         """, unsafe_allow_html=True)
     
@@ -1699,29 +1779,55 @@ with tab2:
             help="Enter your starting portfolio value to see dollar gains/losses"
         )
     
-    # Calculate monthly dollar gains
+    # Calculate monthly dollar gains with dividend breakdown
     returns_series = portfolio_returns if isinstance(portfolio_returns, pd.Series) else portfolio_returns.iloc[:, 0]
     monthly_returns = returns_series.resample('M').apply(lambda x: (1 + x).prod() - 1)
     
-    # Calculate cumulative value and monthly dollar gains
-    cumulative_value = initial_capital
+    # Estimate dividend component (approximate - based on typical dividend yields)
+    # For more accuracy, would need separate dividend data
+    # Rough estimate: ~2% annual dividend yield for typical stock portfolio
+    # Distributed across months based on return
     monthly_data = []
+    cumulative_value = initial_capital
+    annual_dividend_yield = 0.018  # Approximate 1.8% annual yield for diversified portfolio
+    monthly_dividend_rate = annual_dividend_yield / 12
     
     for date, monthly_return in monthly_returns.items():
         month_start_value = cumulative_value
-        dollar_gain = month_start_value * monthly_return
-        cumulative_value = month_start_value + dollar_gain
+        
+        # Estimate dividend portion (rough approximation)
+        # Dividends are roughly consistent, capital gains vary
+        estimated_dividend = month_start_value * monthly_dividend_rate
+        
+        # Total dollar gain
+        total_dollar_gain = month_start_value * monthly_return
+        
+        # Capital gain = Total gain - Dividends
+        capital_gain = total_dollar_gain - estimated_dividend
+        
+        # Update cumulative value
+        cumulative_value = month_start_value + total_dollar_gain
         
         monthly_data.append({
             'Date': date.strftime('%Y-%m'),
             'Month': date.strftime('%B'),
             'Year': date.year,
             'Return %': monthly_return * 100,
-            'Dollar Gain/Loss': dollar_gain,
+            'Total Gain/Loss': total_dollar_gain,
+            'Capital Gain/Loss': capital_gain,
+            'Dividend Income': estimated_dividend,
             'Portfolio Value': cumulative_value
         })
     
     monthly_df = pd.DataFrame(monthly_data)
+    
+    # Add note about dividend estimation
+    st.info("""
+        **📊 Dividend Estimation:**  
+        Dividends are estimated at ~1.8% annually (0.15% monthly) based on typical portfolio yields.  
+        For exact dividend amounts, you would need dividend-specific data from your broker.  
+        Capital gains = Total gains minus estimated dividends.
+    """)
     
     # Display options
     view_option = st.radio(
@@ -1743,24 +1849,28 @@ with tab2:
     
     # Format for display
     display_df['Return %'] = display_df['Return %'].apply(lambda x: f"{x:+.2f}%")
-    display_df['Dollar Gain/Loss'] = display_df['Dollar Gain/Loss'].apply(lambda x: f"${x:+,.2f}")
+    display_df['Total Gain/Loss'] = display_df['Total Gain/Loss'].apply(lambda x: f"${x:+,.2f}")
+    display_df['Capital Gain/Loss'] = display_df['Capital Gain/Loss'].apply(lambda x: f"${x:+,.2f}")
+    display_df['Dividend Income'] = display_df['Dividend Income'].apply(lambda x: f"${x:,.2f}")
     display_df['Portfolio Value'] = display_df['Portfolio Value'].apply(lambda x: f"${x:,.2f}")
     
     st.dataframe(
-        display_df[['Date', 'Month', 'Return %', 'Dollar Gain/Loss', 'Portfolio Value']],
+        display_df[['Date', 'Month', 'Return %', 'Capital Gain/Loss', 'Dividend Income', 'Total Gain/Loss', 'Portfolio Value']],
         use_container_width=True,
         hide_index=True
     )
     
-    # Summary statistics
+    # Summary statistics with dividend breakdown
     st.markdown("#### 📊 Income Summary")
     
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
     
-    total_gain = monthly_df['Dollar Gain/Loss'].sum()
-    positive_months = (monthly_df['Dollar Gain/Loss'] > 0).sum()
-    negative_months = (monthly_df['Dollar Gain/Loss'] < 0).sum()
-    avg_monthly_gain = monthly_df['Dollar Gain/Loss'].mean()
+    total_gain = monthly_df['Total Gain/Loss'].sum()
+    total_dividends = monthly_df['Dividend Income'].sum()
+    total_capital_gains = monthly_df['Capital Gain/Loss'].sum()
+    positive_months = (monthly_df['Total Gain/Loss'] > 0).sum()
+    negative_months = (monthly_df['Total Gain/Loss'] < 0).sum()
+    avg_monthly_gain = monthly_df['Total Gain/Loss'].mean()
     
     with col1:
         st.metric(
@@ -1771,32 +1881,52 @@ with tab2:
     
     with col2:
         st.metric(
-            "Avg Monthly Gain",
-            f"${avg_monthly_gain:,.2f}"
+            "Total Dividends",
+            f"${total_dividends:,.2f}",
+            f"{(total_dividends / total_gain * 100 if total_gain > 0 else 0):.1f}% of total"
         )
     
     with col3:
+        st.metric(
+            "Capital Gains",
+            f"${total_capital_gains:,.2f}",
+            f"{(total_capital_gains / total_gain * 100 if total_gain > 0 else 0):.1f}% of total"
+        )
+    
+    with col4:
         st.metric(
             "Positive Months",
             f"{positive_months}",
             f"{positive_months / len(monthly_df) * 100:.1f}%"
         )
     
-    with col4:
+    with col5:
         st.metric(
-            "Negative Months",
-            f"{negative_months}",
-            f"{negative_months / len(monthly_df) * 100:.1f}%"
+            "Avg Monthly Gain",
+            f"${avg_monthly_gain:,.2f}"
         )
     
-    # Tax planning insights
+    # Tax planning insights with dividend focus
     st.markdown("---")
     st.info("""
-        **💡 Tax Planning Tips:**
-        - **Short-term gains** (held <1 year): Taxed as ordinary income (10-37%)
-        - **Long-term gains** (held >1 year): Lower rates (0%, 15%, or 20%)
-        - **Tax-loss harvesting**: Negative months can offset gains if you have other taxable gains
-        - **Wash sale rule**: Can't repurchase same security within 30 days when harvesting losses
+        **💡 Tax Planning Tips (Capital Gains vs Dividends):**
+        
+        **Dividends:**
+        - **Qualified dividends**: 0%, 15%, or 20% tax rate (held >60 days)
+        - **Ordinary dividends**: Taxed as ordinary income (10-37%)
+        - **Steady income**: Dividends provide consistent monthly income
+        - **Tax efficient**: Qualified dividends taxed lower than wages
+        
+        **Capital Gains:**
+        - **Short-term** (held <1 year): Taxed as ordinary income (10-37%)
+        - **Long-term** (held >1 year): Lower rates (0%, 15%, or 20%)
+        - **Tax-loss harvesting**: Negative months can offset gains
+        - **Wash sale rule**: Can't repurchase same security within 30 days
+        
+        **Strategy Tips:**
+        - Hold dividend stocks in tax-advantaged accounts (401k, IRA) to defer taxes
+        - Harvest losses in taxable accounts to offset capital gains
+        - In retirement, qualified dividends are tax-efficient income source
         - **Consult a CPA**: This is for planning only - not tax advice!
     """)
     
