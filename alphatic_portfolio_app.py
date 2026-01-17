@@ -771,6 +771,85 @@ def get_etf_expense_ratio_database(symbol):
     return etf_database.get(symbol.upper(), None)
 
 
+def get_etf_top_holdings(symbol):
+    """
+    Database of top 10 holdings for major ETFs
+    Returns list of dicts with holding, ticker, weight
+    """
+    holdings_database = {
+        'SPY': [
+            {'holding': 'Apple Inc', 'ticker': 'AAPL', 'weight': 0.071},
+            {'holding': 'Microsoft Corp', 'ticker': 'MSFT', 'weight': 0.068},
+            {'holding': 'NVIDIA Corp', 'ticker': 'NVDA', 'weight': 0.052},
+            {'holding': 'Amazon.com Inc', 'ticker': 'AMZN', 'weight': 0.038},
+            {'holding': 'Meta Platforms Inc', 'ticker': 'META', 'weight': 0.025},
+            {'holding': 'Alphabet Inc Class A', 'ticker': 'GOOGL', 'weight': 0.021},
+            {'holding': 'Berkshire Hathaway B', 'ticker': 'BRK.B', 'weight': 0.018},
+            {'holding': 'Alphabet Inc Class C', 'ticker': 'GOOG', 'weight': 0.018},
+            {'holding': 'Tesla Inc', 'ticker': 'TSLA', 'weight': 0.015},
+            {'holding': 'Eli Lilly and Co', 'ticker': 'LLY', 'weight': 0.014},
+        ],
+        'VOO': [  # Same as SPY (tracks S&P 500)
+            {'holding': 'Apple Inc', 'ticker': 'AAPL', 'weight': 0.071},
+            {'holding': 'Microsoft Corp', 'ticker': 'MSFT', 'weight': 0.068},
+            {'holding': 'NVIDIA Corp', 'ticker': 'NVDA', 'weight': 0.052},
+            {'holding': 'Amazon.com Inc', 'ticker': 'AMZN', 'weight': 0.038},
+            {'holding': 'Meta Platforms Inc', 'ticker': 'META', 'weight': 0.025},
+            {'holding': 'Alphabet Inc Class A', 'ticker': 'GOOGL', 'weight': 0.021},
+            {'holding': 'Berkshire Hathaway B', 'ticker': 'BRK.B', 'weight': 0.018},
+            {'holding': 'Alphabet Inc Class C', 'ticker': 'GOOG', 'weight': 0.018},
+            {'holding': 'Tesla Inc', 'ticker': 'TSLA', 'weight': 0.015},
+            {'holding': 'Eli Lilly and Co', 'ticker': 'LLY', 'weight': 0.014},
+        ],
+        'IVV': [  # Same as SPY (tracks S&P 500)
+            {'holding': 'Apple Inc', 'ticker': 'AAPL', 'weight': 0.071},
+            {'holding': 'Microsoft Corp', 'ticker': 'MSFT', 'weight': 0.068},
+            {'holding': 'NVIDIA Corp', 'ticker': 'NVDA', 'weight': 0.052},
+            {'holding': 'Amazon.com Inc', 'ticker': 'AMZN', 'weight': 0.038},
+            {'holding': 'Meta Platforms Inc', 'ticker': 'META', 'weight': 0.025},
+            {'holding': 'Alphabet Inc Class A', 'ticker': 'GOOGL', 'weight': 0.021},
+            {'holding': 'Berkshire Hathaway B', 'ticker': 'BRK.B', 'weight': 0.018},
+            {'holding': 'Alphabet Inc Class C', 'ticker': 'GOOG', 'weight': 0.018},
+            {'holding': 'Tesla Inc', 'ticker': 'TSLA', 'weight': 0.015},
+            {'holding': 'Eli Lilly and Co', 'ticker': 'LLY', 'weight': 0.014},
+        ],
+        'QQQ': [
+            {'holding': 'Apple Inc', 'ticker': 'AAPL', 'weight': 0.085},
+            {'holding': 'Microsoft Corp', 'ticker': 'MSFT', 'weight': 0.082},
+            {'holding': 'NVIDIA Corp', 'ticker': 'NVDA', 'weight': 0.078},
+            {'holding': 'Amazon.com Inc', 'ticker': 'AMZN', 'weight': 0.055},
+            {'holding': 'Meta Platforms Inc', 'ticker': 'META', 'weight': 0.048},
+            {'holding': 'Broadcom Inc', 'ticker': 'AVGO', 'weight': 0.045},
+            {'holding': 'Tesla Inc', 'ticker': 'TSLA', 'weight': 0.042},
+            {'holding': 'Alphabet Inc Class A', 'ticker': 'GOOGL', 'weight': 0.028},
+            {'holding': 'Alphabet Inc Class C', 'ticker': 'GOOG', 'weight': 0.028},
+            {'holding': 'Costco Wholesale', 'ticker': 'COST', 'weight': 0.025},
+        ],
+        'VTI': [
+            {'holding': 'Apple Inc', 'ticker': 'AAPL', 'weight': 0.058},
+            {'holding': 'Microsoft Corp', 'ticker': 'MSFT', 'weight': 0.055},
+            {'holding': 'NVIDIA Corp', 'ticker': 'NVDA', 'weight': 0.042},
+            {'holding': 'Amazon.com Inc', 'ticker': 'AMZN', 'weight': 0.031},
+            {'holding': 'Meta Platforms Inc', 'ticker': 'META', 'weight': 0.020},
+            {'holding': 'Alphabet Inc Class A', 'ticker': 'GOOGL', 'weight': 0.017},
+            {'holding': 'Berkshire Hathaway B', 'ticker': 'BRK.B', 'weight': 0.015},
+            {'holding': 'Alphabet Inc Class C', 'ticker': 'GOOG', 'weight': 0.015},
+            {'holding': 'Tesla Inc', 'ticker': 'TSLA', 'weight': 0.012},
+            {'holding': 'Eli Lilly and Co', 'ticker': 'LLY', 'weight': 0.011},
+        ],
+        'AGG': [
+            {'holding': 'US Treasury Bonds', 'ticker': 'UST', 'weight': 0.420},
+            {'holding': 'Mortgage Backed Securities', 'ticker': 'MBS', 'weight': 0.260},
+            {'holding': 'Corporate Bonds (Investment Grade)', 'ticker': 'IG CORP', 'weight': 0.240},
+            {'holding': 'Government Related Bonds', 'ticker': 'GOVT', 'weight': 0.050},
+            {'holding': 'Asset Backed Securities', 'ticker': 'ABS', 'weight': 0.020},
+            {'holding': 'Commercial MBS', 'ticker': 'CMBS', 'weight': 0.010},
+        ],
+    }
+    
+    return holdings_database.get(symbol.upper(), None)
+
+
 def interpret_economic_regime(econ_data):
     """
     Interpret economic data into regime classification
@@ -2276,6 +2355,9 @@ with tab2:
     else:  # All Time
         display_df = monthly_df.copy()
     
+    # Keep unformatted version for calculations
+    filtered_df_for_calc = display_df.copy()
+    
     # Format for display
     display_df['Return %'] = display_df['Return %'].apply(lambda x: f"{x:+.2f}%")
     display_df['Total Gain/Loss'] = display_df['Total Gain/Loss'].apply(lambda x: f"${x:+,.2f}")
@@ -2289,23 +2371,32 @@ with tab2:
         hide_index=True
     )
     
-    # Summary statistics with dividend breakdown
+    # Summary statistics with dividend breakdown (from FILTERED data)
     st.markdown("#### 📊 Income Summary")
     
     col1, col2, col3, col4, col5 = st.columns(5)
     
-    total_gain = monthly_df['Total Gain/Loss'].sum()
-    total_dividends = monthly_df['Dividend Income'].sum()
-    total_capital_gains = monthly_df['Capital Gain/Loss'].sum()
-    positive_months = (monthly_df['Total Gain/Loss'] > 0).sum()
-    negative_months = (monthly_df['Total Gain/Loss'] < 0).sum()
-    avg_monthly_gain = monthly_df['Total Gain/Loss'].mean()
+    # Calculate from filtered data, not all-time data
+    total_gain = filtered_df_for_calc['Total Gain/Loss'].sum()
+    total_dividends = filtered_df_for_calc['Dividend Income'].sum()
+    total_capital_gains = filtered_df_for_calc['Capital Gain/Loss'].sum()
+    positive_months = (filtered_df_for_calc['Total Gain/Loss'] > 0).sum()
+    negative_months = (filtered_df_for_calc['Total Gain/Loss'] < 0).sum()
+    avg_monthly_gain = filtered_df_for_calc['Total Gain/Loss'].mean()
+    
+    # Calculate portfolio value change for the filtered period
+    if len(filtered_df_for_calc) > 0:
+        period_start_value = filtered_df_for_calc.iloc[0]['Portfolio Value'] - filtered_df_for_calc.iloc[0]['Total Gain/Loss']
+        period_end_value = filtered_df_for_calc.iloc[-1]['Portfolio Value']
+        period_return_pct = ((period_end_value - period_start_value) / period_start_value * 100) if period_start_value > 0 else 0
+    else:
+        period_return_pct = 0
     
     with col1:
         st.metric(
             "Total Gain/Loss",
             f"${total_gain:,.2f}",
-            f"{((cumulative_value - initial_capital) / initial_capital * 100):+.2f}%"
+            f"{period_return_pct:+.2f}%"
         )
     
     with col2:
@@ -2326,7 +2417,7 @@ with tab2:
         st.metric(
             "Positive Months",
             f"{positive_months}",
-            f"{positive_months / len(monthly_df) * 100:.1f}%"
+            f"{positive_months / len(filtered_df_for_calc) * 100:.1f}%" if len(filtered_df_for_calc) > 0 else "0.0%"
         )
     
     with col5:
@@ -4126,8 +4217,6 @@ with tab7:
                         etf_info['yield'] = etf_db_info.get('yield', 0)
                     if not etf_info.get('category'):
                         etf_info['category'] = etf_db_info.get('category', 'ETF')
-                    
-                    st.info(f"**ℹ️ Data Source:** Using database for {selected_etf} (yfinance data unavailable)")
             
             # Basic Information Section
             st.markdown(f"#### 📋 {selected_etf} - Basic Information")
@@ -4268,26 +4357,38 @@ with tab7:
                         💡 **Tip:** For major ETFs, try one of these: SPY, VOO, QQQ, VTI, AGG, IWM, VT, VXUS
                     """)
             
-            # Holdings Information (if available from yfinance)
+            # Holdings Information
             st.markdown("---")
             st.markdown("#### 📊 Top Holdings")
             
-            try:
-                # Try to get holdings data
-                # Note: yfinance may not always have this data
-                st.info("**Note:** Detailed holdings data requires OpenBB. Install OpenBB for comprehensive holdings analysis.")
+            # Get holdings from database
+            holdings = get_etf_top_holdings(selected_etf)
+            
+            if holdings:
+                # Display holdings table
+                holdings_df = pd.DataFrame(holdings)
+                holdings_df['Weight'] = holdings_df['weight'].apply(lambda x: f"{x:.1%}")
+                holdings_df = holdings_df[['holding', 'ticker', 'Weight']]
+                holdings_df.columns = ['Holding', 'Ticker', 'Weight']
                 
-                # Placeholder for future OpenBB integration
-                if OPENBB_AVAILABLE:
-                    etf_data = get_etf_info_openbb(selected_etf)
-                    if etf_data and not etf_data['holdings'].empty:
-                        st.dataframe(etf_data['holdings'].head(10), use_container_width=True)
-                    else:
-                        st.caption("Holdings data not available through OpenBB for this ETF.")
-                else:
-                    st.caption("Install OpenBB to see top holdings, sector allocation, and more: `pip install openbb --break-system-packages`")
-            except:
-                st.caption("Holdings data not available.")
+                st.dataframe(holdings_df, use_container_width=True, hide_index=True)
+                
+                # Calculate concentration
+                total_top_holdings = sum(h['weight'] for h in holdings)
+                st.caption(f"**Top {len(holdings)} holdings represent {total_top_holdings:.1%} of the fund**")
+                
+                if total_top_holdings > 0.5:
+                    st.info(f"⚠️ **Concentration Risk:** Top {len(holdings)} holdings make up over 50% of this ETF. Performance heavily dependent on these stocks.")
+            else:
+                st.info(f"""
+                    **ℹ️ Holdings Data Not Available**
+                    
+                    Top holdings data for {selected_etf} is not in our database yet.
+                    
+                    We have holdings data for: SPY, VOO, IVV, QQQ, VTI, AGG
+                    
+                    💡 **Install OpenBB for comprehensive holdings:** `pip install openbb --break-system-packages`
+                """)
             
             # Performance History
             st.markdown("---")
