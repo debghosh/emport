@@ -1705,43 +1705,114 @@ st.sidebar.markdown("### 🔨 Build Portfolio")
 # Input for new portfolio name
 portfolio_name = st.sidebar.text_input("Portfolio Name", value="My Portfolio")
 
-# Ticker input
-ticker_input = st.sidebar.text_area(
-    "Enter Tickers (one per line or comma-separated)",
-    value="SPY\nQQQ\nAGG",
-    height=100
+# ETF Selection Method
+selection_mode = st.sidebar.radio(
+    "Selection Mode",
+    ["🎯 Popular ETFs (Recommended)", "✍️ Manual Entry"],
+    help="Choose from curated list or enter any ticker"
 )
 
-# Parse tickers
-if ticker_input:
-    tickers_list = [t.strip().upper() for t in ticker_input.replace(',', '\n').split('\n') if t.strip()]
+if selection_mode == "🎯 Popular ETFs (Recommended)":
+    # Organize ETFs by category
+    st.sidebar.markdown("#### Select ETFs:")
+    
+    # Get all ETFs from database
+    all_etfs = {
+        '📊 US Equity - Large Cap': ['SPY', 'VOO', 'IVV', 'VTI', 'SCHB'],
+        '💻 Tech & Growth': ['QQQ', 'QQQM', 'XLK', 'VGT', 'VUG'],
+        '🏢 Small & Mid Cap': ['IWM', 'VB', 'IJR', 'VO', 'IJH'],
+        '🌍 International': ['VT', 'VXUS', 'EFA', 'VEA', 'IEFA'],
+        '🌏 Emerging Markets': ['VWO', 'IEMG', 'EEM'],
+        '💰 Bonds': ['AGG', 'BND', 'TLT', 'IEF', 'SHY'],
+        '💵 Dividends': ['VYM', 'SCHD', 'DVY', 'NOBL'],
+        '🏗️ Sectors': ['XLF', 'XLE', 'XLV', 'XLI', 'XLP'],
+        '🏠 Real Estate': ['VNQ', 'IYR'],
+        '🥇 Commodities': ['GLD', 'IAU', 'SLV']
+    }
+    
+    selected_etfs = []
+    
+    # Use expanders for each category
+    for category, etf_list in all_etfs.items():
+        with st.sidebar.expander(category):
+            for etf in etf_list:
+                # Get ETF name from database
+                etf_info = get_etf_expense_ratio_database(etf)
+                etf_name = etf_info['name'] if etf_info else etf
+                expense_ratio = etf_info['expense_ratio'] if etf_info else 0
+                
+                if st.checkbox(
+                    f"{etf} - {etf_name[:30]}... ({expense_ratio:.2%})",
+                    key=f"select_{etf}"
+                ):
+                    selected_etfs.append(etf)
+    
+    tickers_list = selected_etfs
+
+else:  # Manual Entry
+    ticker_input = st.sidebar.text_area(
+        "Enter Tickers (one per line or comma-separated)",
+        value="SPY\nQQQ\nAGG",
+        height=100,
+        help="Enter any ticker symbols"
+    )
+    
+    # Parse tickers
+    if ticker_input:
+        tickers_list = [t.strip().upper() for t in ticker_input.replace(',', '\n').split('\n') if t.strip()]
+    else:
+        tickers_list = []
+
+# Show selected tickers
+if tickers_list:
+    st.sidebar.success(f"✅ {len(tickers_list)} ETFs selected: {', '.join(tickers_list)}")
 else:
-    tickers_list = []
+    st.sidebar.info("👆 Select ETFs to build portfolio")
 
 # Allocation method
+st.sidebar.markdown("---")
+st.sidebar.markdown("#### ⚖️ Allocation Method")
+
 allocation_method = st.sidebar.radio(
-    "Allocation Method",
-    ["Equal Weight", "Custom Weights", "Optimize (Max Sharpe)"]
+    "How to allocate?",
+    ["Equal Weight", "Custom Weights", "Optimized (Max Sharpe)"],
+    help="Equal=same %, Custom=you decide, Optimized=algorithm decides"
 )
 
 # Custom weights if selected
 custom_weights = {}
 if allocation_method == "Custom Weights" and tickers_list:
     st.sidebar.markdown("**Set Custom Weights (must sum to 100%):**")
-    for ticker in tickers_list:
-        weight = st.sidebar.number_input(
-            f"{ticker} %",
+    
+    # Use sliders for better UX
+    total_allocated = 0
+    for i, ticker in enumerate(tickers_list):
+        # Default to equal weight
+        default_weight = 100.0 / len(tickers_list)
+        
+        weight = st.sidebar.slider(
+            f"{ticker}",
             min_value=0.0,
             max_value=100.0,
-            value=100.0 / len(tickers_list),
+            value=default_weight,
             step=1.0,
-            key=f"weight_{ticker}"
+            key=f"weight_{ticker}",
+            help=f"Allocation for {ticker}"
         )
         custom_weights[ticker] = weight / 100.0
+        total_allocated += weight
     
-    weight_sum = sum(custom_weights.values())
-    if abs(weight_sum - 1.0) > 0.01:
-        st.sidebar.warning(f"⚠️ Weights sum to {weight_sum*100:.1f}% (should be 100%)")
+    # Show total
+    if abs(total_allocated - 100.0) < 0.1:
+        st.sidebar.success(f"✅ Total: {total_allocated:.1f}%")
+    else:
+        st.sidebar.warning(f"⚠️ Total: {total_allocated:.1f}% (should be 100%)")
+
+elif allocation_method == "Equal Weight" and tickers_list:
+    st.sidebar.info(f"Each of {len(tickers_list)} ETFs will get {100/len(tickers_list):.1f}%")
+
+elif allocation_method == "Optimized (Max Sharpe)" and tickers_list:
+    st.sidebar.info("Algorithm will find optimal weights based on historical risk/return")
 
 # Date range selection
 st.sidebar.markdown("---")
@@ -1766,9 +1837,9 @@ end_date = st.sidebar.date_input(
 )
 
 # Build Portfolio Button
-if st.sidebar.button("🚀 Build Portfolio", type="primary"):
+if st.sidebar.button("🚀 Build Portfolio", type="primary", disabled=len(tickers_list) == 0):
     if not tickers_list:
-        st.sidebar.error("Please enter at least one ticker!")
+        st.sidebar.error("Please select at least one ETF!")
     else:
         with st.spinner("Building portfolio..."):
             # Determine start date if auto
@@ -1908,14 +1979,18 @@ metrics = calculate_portfolio_metrics(portfolio_returns)
 # TABS STRUCTURE - 7 TABS
 # =============================================================================
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs([
     "📈 Overview",
     "📊 Detailed Analysis", 
     "📬 PyFolio Analysis",
     "🌡️ Market Regimes",
     "🔮 Forward Risk",
-    "⚖️ Compare Benchmarks",
-    "🎯 Optimization"
+    "⚖️ Benchmarks",
+    "🎯 Optimization",
+    "⚡ Rebalancing",
+    "🔗 Correlation",
+    "🏆 Compare Portfolios",
+    "💰 Tax Harvesting"
 ])
 
 # =============================================================================
@@ -4630,6 +4705,669 @@ with tab7:
             file_name="optimal_weights.csv",
             mime="text/csv"
         )
+
+
+# =============================================================================
+# TAB 8: REBALANCING CALCULATOR
+# =============================================================================
+
+with tab8:
+    st.markdown("## ⚡ Rebalancing Calculator")
+    
+    st.info("""
+        **🎯 What This Does:** Shows exactly what trades to make to rebalance your portfolio.
+        Compares current allocation vs target allocation and calculates precise buy/sell amounts.
+    """)
+    
+    # Input current portfolio value
+    st.markdown("### 💵 Current Portfolio Value")
+    current_total_value = st.number_input(
+        "Total Portfolio Value ($)",
+        min_value=1000,
+        max_value=100000000,
+        value=100000,
+        step=1000,
+        help="Your actual portfolio value in dollars"
+    )
+    
+    # Show current allocation
+    st.markdown("---")
+    st.markdown("### 📊 Current Allocation")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("#### Built Portfolio (Target)")
+        target_df = pd.DataFrame({
+            'Ticker': list(weights.keys()),
+            'Target %': [f"{w*100:.2f}%" for w in weights.values()],
+            'Target $': [f"${current_total_value * w:,.2f}" for w in weights.values()]
+        })
+        st.dataframe(target_df, use_container_width=True, hide_index=True)
+    
+    with col2:
+        st.markdown("#### Actual Allocation (Optional)")
+        st.caption("If your current holdings differ from target, enter actual percentages:")
+        
+        actual_allocations = {}
+        for ticker in weights.keys():
+            actual_pct = st.number_input(
+                f"{ticker} (current %)",
+                min_value=0.0,
+                max_value=100.0,
+                value=weights[ticker] * 100,
+                step=0.1,
+                key=f"actual_{ticker}"
+            )
+            actual_allocations[ticker] = actual_pct / 100
+        
+        actual_total = sum(actual_allocations.values())
+        if abs(actual_total - 1.0) > 0.01:
+            st.warning(f"⚠️ Total: {actual_total*100:.1f}% (should be 100%)")
+    
+    # Calculate rebalancing trades
+    st.markdown("---")
+    st.markdown("### ⚡ Rebalancing Actions Required")
+    
+    trades = []
+    for ticker in weights.keys():
+        target_value = current_total_value * weights[ticker]
+        actual_value = current_total_value * actual_allocations[ticker]
+        difference = target_value - actual_value
+        
+        if abs(difference) > 1:  # Only show if difference > $1
+            action = "BUY" if difference > 0 else "SELL"
+            trades.append({
+                'Ticker': ticker,
+                'Current $': f"${actual_value:,.2f}",
+                'Current %': f"{actual_allocations[ticker]*100:.2f}%",
+                'Target $': f"${target_value:,.2f}",
+                'Target %': f"{weights[ticker]*100:.2f}%",
+                'Action': action,
+                'Amount': f"${abs(difference):,.2f}"
+            })
+    
+    if trades:
+        trades_df = pd.DataFrame(trades)
+        st.dataframe(trades_df, use_container_width=True, hide_index=True)
+        
+        # Summary
+        total_turnover = sum(abs(current_total_value * (actual_allocations[t] - weights[t])) for t in weights.keys()) / 2
+        st.metric("Total Turnover", f"${total_turnover:,.2f}", 
+                 help="Sum of all buys (or sells) needed")
+        
+        # Tax impact estimate (if taxable account)
+        st.markdown("---")
+        st.markdown("### 💰 Tax Impact Estimate")
+        
+        account_type = st.radio(
+            "Account Type",
+            ["Tax-Advantaged (IRA, 401k)", "Taxable (Brokerage)"],
+            horizontal=True
+        )
+        
+        if account_type == "Tax-Advantaged (IRA, 401k)":
+            st.success("✅ **No tax impact!** Rebalance freely in tax-advantaged accounts.")
+        else:
+            # Estimate tax impact
+            st.warning("⚠️ Selling may trigger capital gains tax in taxable accounts")
+            
+            avg_gain_pct = st.slider(
+                "Average gain on holdings you're selling (%)",
+                min_value=0,
+                max_value=200,
+                value=25,
+                help="Estimate your average unrealized gain"
+            )
+            
+            tax_rate = st.selectbox(
+                "Capital gains tax rate",
+                ["0% (Low income)", "15% (Most people)", "20% (High income)"],
+                index=1
+            )
+            
+            rate_map = {"0% (Low income)": 0.00, "15% (Most people)": 0.15, "20% (High income)": 0.20}
+            rate = rate_map[tax_rate]
+            
+            # Calculate tax on sells
+            total_sells = sum(
+                abs(current_total_value * (actual_allocations[t] - weights[t]))
+                for t in weights.keys()
+                if actual_allocations[t] > weights[t]
+            )
+            
+            taxable_gains = total_sells * (avg_gain_pct / 100)
+            tax_owed = taxable_gains * rate
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total Sells", f"${total_sells:,.2f}")
+            with col2:
+                st.metric("Taxable Gains", f"${taxable_gains:,.2f}")
+            with col3:
+                st.metric("Tax Owed", f"${tax_owed:,.2f}")
+            
+            st.markdown(f"""
+                <div class="interpretation-box">
+                    <div class="interpretation-title">💡 Tax-Aware Rebalancing</div>
+                    <p><strong>Cost of Rebalancing:</strong> ~${tax_owed:,.0f} in taxes</p>
+                    <p><strong>Is it worth it?</strong></p>
+                    <ul>
+                        <li>If portfolio is significantly out of balance (>5-10% from target): Usually YES</li>
+                        <li>If only minor drift (<2-3%): Consider waiting or using new contributions</li>
+                        <li>Alternative: Direct new contributions to underweight positions instead</li>
+                    </ul>
+                </div>
+            """, unsafe_allow_html=True)
+    
+    else:
+        st.success("✅ **Portfolio is perfectly balanced!** No rebalancing needed.")
+
+
+# =============================================================================
+# TAB 9: CORRELATION MATRIX
+# =============================================================================
+
+with tab9:
+    st.markdown("## 🔗 Correlation Matrix")
+    
+    st.info("""
+        **🎯 What This Shows:** How your holdings move together.  
+        High correlation (close to 1.0) = NOT diversified. Low/negative correlation = TRUE diversification.
+    """)
+    
+    # Calculate correlation matrix
+    returns_df = pd.DataFrame()
+    for ticker in weights.keys():
+        ticker_data = download_ticker_data([ticker], current['start_date'], current['end_date'])
+        if ticker_data is not None:
+            ticker_returns = ticker_data.pct_change().dropna()
+            returns_df[ticker] = ticker_returns.iloc[:, 0] if isinstance(ticker_returns, pd.DataFrame) else ticker_returns
+    
+    if not returns_df.empty:
+        corr_matrix = returns_df.corr()
+        
+        # Display correlation matrix
+        st.markdown("### 📊 Correlation Matrix")
+        
+        # Create heatmap
+        fig, ax = plt.subplots(figsize=(10, 8))
+        
+        # Create mask for upper triangle
+        mask = np.triu(np.ones_like(corr_matrix, dtype=bool))
+        
+        # Create heatmap
+        sns.heatmap(
+            corr_matrix,
+            mask=mask,
+            annot=True,
+            fmt='.2f',
+            cmap='RdYlGn_r',
+            center=0,
+            square=True,
+            linewidths=1,
+            cbar_kws={"shrink": 0.8},
+            vmin=-1,
+            vmax=1,
+            ax=ax
+        )
+        
+        ax.set_title('Asset Correlation Matrix', fontsize=16, fontweight='bold', pad=20)
+        plt.tight_layout()
+        st.pyplot(fig)
+        
+        # Interpretation
+        st.markdown("""
+            <div class="interpretation-box">
+                <div class="interpretation-title">💡 How to Read This</div>
+                <p><strong>Correlation Scale:</strong></p>
+                <ul>
+                    <li><strong>1.0 (Dark Red):</strong> Perfect correlation - assets move together identically</li>
+                    <li><strong>0.5-0.9 (Orange):</strong> High correlation - similar movements</li>
+                    <li><strong>0.0-0.5 (Yellow):</strong> Moderate correlation - some relationship</li>
+                    <li><strong>-0.5 to 0.0 (Light Green):</strong> Low/negative correlation - different movements</li>
+                    <li><strong>-1.0 (Dark Green):</strong> Perfect negative correlation - exact opposite movements</li>
+                </ul>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Identify high correlation pairs
+        st.markdown("---")
+        st.markdown("### ⚠️ High Correlation Warnings")
+        
+        high_corr_pairs = []
+        for i in range(len(corr_matrix.columns)):
+            for j in range(i+1, len(corr_matrix.columns)):
+                corr_value = corr_matrix.iloc[i, j]
+                if corr_value > 0.85:
+                    high_corr_pairs.append({
+                        'Asset 1': corr_matrix.columns[i],
+                        'Asset 2': corr_matrix.columns[j],
+                        'Correlation': f"{corr_value:.2f}",
+                        'Warning': '🚨 Very High - Consider removing one'
+                    })
+        
+        if high_corr_pairs:
+            st.warning(f"**Found {len(high_corr_pairs)} highly correlated pair(s):**")
+            high_corr_df = pd.DataFrame(high_corr_pairs)
+            st.dataframe(high_corr_df, use_container_width=True, hide_index=True)
+            
+            st.markdown("""
+                **🎯 What This Means:**  
+                Assets with correlation > 0.85 move almost identically. You're not getting much diversification benefit.
+                
+                **💡 Recommendation:**  
+                Consider replacing one of the highly correlated assets with something less correlated 
+                (e.g., bonds if you have multiple stock ETFs, or international if you're all US).
+            """)
+        else:
+            st.success("✅ **Good Diversification!** No highly correlated pairs found (all < 0.85)")
+        
+        # Show average correlation
+        st.markdown("---")
+        st.markdown("### 📈 Portfolio Diversification Score")
+        
+        # Calculate average correlation (excluding diagonal)
+        avg_corr = (corr_matrix.values.sum() - len(corr_matrix)) / (len(corr_matrix) ** 2 - len(corr_matrix))
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric("Average Correlation", f"{avg_corr:.2f}")
+        
+        with col2:
+            if avg_corr < 0.5:
+                score = "Excellent"
+                color = "success"
+            elif avg_corr < 0.7:
+                score = "Good"
+                color = "info"
+            elif avg_corr < 0.85:
+                score = "Moderate"
+                color = "warning"
+            else:
+                score = "Poor"
+                color = "error"
+            
+            st.metric("Diversification", score)
+        
+        with col3:
+            # Count how many assets
+            st.metric("Asset Count", len(corr_matrix))
+        
+        if avg_corr < 0.5:
+            st.success("🌟 **Excellent Diversification!** Your assets are well-diversified with low average correlation.")
+        elif avg_corr < 0.7:
+            st.info("✅ **Good Diversification:** Reasonable spread across different asset types.")
+        elif avg_corr < 0.85:
+            st.warning("⚠️ **Moderate Diversification:** Consider adding more uncorrelated assets.")
+        else:
+            st.error("🚨 **Poor Diversification:** Assets are highly correlated. You're essentially holding the same thing multiple times.")
+
+
+# =============================================================================
+# TAB 10: MULTI-PORTFOLIO COMPARISON
+# =============================================================================
+
+with tab10:
+    st.markdown("## 🏆 Compare Multiple Portfolios")
+    
+    st.info("""
+        **🎯 What This Does:** Compare up to 3 different portfolio strategies side-by-side.
+        Helps answer: "Which allocation should I choose?"
+    """)
+    
+    # Check if multiple portfolios exist
+    available_portfolios = list(st.session_state.portfolios.keys())
+    
+    if len(available_portfolios) < 2:
+        st.warning("""
+            **Create More Portfolios to Compare!**
+            
+            Currently you have only 1 portfolio. To use this feature:
+            1. Build your current portfolio (e.g., 60/40 SPY/AGG)
+            2. Build alternative portfolio #2 (e.g., 70/30 SPY/AGG)
+            3. Build alternative portfolio #3 (e.g., 100% SPY)
+            4. Come back here to compare them side-by-side
+            
+            💡 **Tip:** Use different names like "Conservative", "Balanced", "Aggressive"
+        """)
+    else:
+        st.markdown("### 📊 Select Portfolios to Compare")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            portfolio1 = st.selectbox("Portfolio 1", available_portfolios, index=0)
+        
+        with col2:
+            portfolio2 = st.selectbox("Portfolio 2", available_portfolios, 
+                                     index=min(1, len(available_portfolios)-1))
+        
+        with col3:
+            if len(available_portfolios) >= 3:
+                portfolio3 = st.selectbox("Portfolio 3", available_portfolios, index=2)
+            else:
+                portfolio3 = None
+        
+        # Get portfolio data
+        portfolios_to_compare = {
+            portfolio1: st.session_state.portfolios[portfolio1],
+        }
+        
+        if portfolio2 and portfolio2 != portfolio1:
+            portfolios_to_compare[portfolio2] = st.session_state.portfolios[portfolio2]
+        
+        if portfolio3 and portfolio3 not in [portfolio1, portfolio2]:
+            portfolios_to_compare[portfolio3] = st.session_state.portfolios[portfolio3]
+        
+        # Calculate metrics for each
+        comparison_data = []
+        
+        for name, portfolio_data in portfolios_to_compare.items():
+            returns = portfolio_data['returns']
+            metrics_calc = calculate_portfolio_metrics(returns)
+            
+            comparison_data.append({
+                'Portfolio': name,
+                'Annual Return': f"{metrics_calc['Annual Return']:.2%}",
+                'Volatility': f"{metrics_calc['Annual Volatility']:.2%}",
+                'Sharpe Ratio': f"{metrics_calc['Sharpe Ratio']:.2f}",
+                'Max Drawdown': f"{metrics_calc['Max Drawdown']:.2%}",
+                'Sortino Ratio': f"{metrics_calc['Sortino Ratio']:.2f}",
+                'Total Return': f"{metrics_calc['Total Return']:.2%}"
+            })
+        
+        # Display comparison table
+        st.markdown("---")
+        st.markdown("### 📊 Performance Comparison")
+        
+        comparison_df = pd.DataFrame(comparison_data)
+        st.dataframe(comparison_df, use_container_width=True, hide_index=True)
+        
+        # Determine winner for each metric
+        st.markdown("---")
+        st.markdown("### 🏆 Winners by Category")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        # Get numeric values for comparison
+        returns_values = {name: st.session_state.portfolios[name]['returns'] for name in portfolios_to_compare.keys()}
+        metrics_values = {name: calculate_portfolio_metrics(returns_values[name]) for name in portfolios_to_compare.keys()}
+        
+        # Best return
+        best_return_name = max(metrics_values.keys(), key=lambda x: metrics_values[x]['Annual Return'])
+        best_return_val = metrics_values[best_return_name]['Annual Return']
+        
+        # Best Sharpe
+        best_sharpe_name = max(metrics_values.keys(), key=lambda x: metrics_values[x]['Sharpe Ratio'])
+        best_sharpe_val = metrics_values[best_sharpe_name]['Sharpe Ratio']
+        
+        # Best Drawdown (least negative)
+        best_dd_name = max(metrics_values.keys(), key=lambda x: metrics_values[x]['Max Drawdown'])
+        best_dd_val = metrics_values[best_dd_name]['Max Drawdown']
+        
+        with col1:
+            st.metric("🏆 Highest Return", best_return_name, f"{best_return_val:.2%}")
+        
+        with col2:
+            st.metric("🏆 Best Sharpe Ratio", best_sharpe_name, f"{best_sharpe_val:.2f}")
+        
+        with col3:
+            st.metric("🏆 Smallest Drawdown", best_dd_name, f"{best_dd_val:.2%}")
+        
+        # Cumulative performance chart
+        st.markdown("---")
+        st.markdown("### 📈 Cumulative Performance")
+        
+        fig, ax = plt.subplots(figsize=(14, 8))
+        
+        colors = ['#667eea', '#28a745', '#dc3545']
+        for i, (name, portfolio_data) in enumerate(portfolios_to_compare.items()):
+            cum_returns = (1 + portfolio_data['returns']).cumprod()
+            cum_returns.plot(ax=ax, linewidth=2.5, label=name, color=colors[i % len(colors)])
+        
+        ax.set_title('Cumulative Performance Comparison', fontsize=16, fontweight='bold', pad=20)
+        ax.set_xlabel('Date', fontsize=12, fontweight='bold')
+        ax.set_ylabel('Cumulative Return', fontsize=12, fontweight='bold')
+        ax.legend(loc='best', frameon=True, shadow=True, fontsize=12)
+        ax.grid(True, alpha=0.3, linestyle='--')
+        ax.set_facecolor('#f8f9fa')
+        fig.patch.set_facecolor('white')
+        
+        plt.tight_layout()
+        st.pyplot(fig)
+        
+        # Recommendation
+        st.markdown("---")
+        st.markdown("### 💡 Recommendation")
+        
+        # Simple recommendation logic
+        if best_sharpe_name == best_return_name:
+            st.success(f"""
+                **🌟 Clear Winner: {best_sharpe_name}**
+                
+                This portfolio has both the highest return AND the best risk-adjusted performance (Sharpe Ratio).
+                It's delivering superior returns without taking excessive risk.
+                
+                **Recommendation:** Choose {best_sharpe_name} for optimal risk/reward balance.
+            """)
+        else:
+            st.info(f"""
+                **⚖️ Trade-offs to Consider:**
+                
+                - **Highest Return:** {best_return_name} ({best_return_val:.2%}/year)
+                - **Best Risk-Adjusted:** {best_sharpe_name} (Sharpe: {best_sharpe_val:.2f})
+                - **Safest:** {best_dd_name} (Max Drawdown: {best_dd_val:.2%})
+                
+                **Recommendation:** 
+                - If you want maximum returns and can handle volatility → {best_return_name}
+                - If you want best risk-adjusted returns → {best_sharpe_name}
+                - If you want to minimize pain during crashes → {best_dd_name}
+                
+                Most investors should choose {best_sharpe_name} for best risk/reward balance.
+            """)
+
+
+# =============================================================================
+# TAB 11: TAX LOSS HARVESTING
+# =============================================================================
+
+with tab11:
+    st.markdown("## 💰 Tax Loss Harvesting Scanner")
+    
+    st.info("""
+        **🎯 What This Does:** Identifies positions with losses that you can sell to offset gains elsewhere,
+        then swap to a similar ETF to maintain market exposure. This is a powerful tax-saving strategy
+        for taxable accounts.
+    """)
+    
+    st.markdown("### 📋 How Tax Loss Harvesting Works")
+    
+    st.markdown("""
+        **The Strategy:**
+        1. **Sell** losing position (realize the loss for tax purposes)
+        2. **Immediately buy** similar (but not identical) ETF
+        3. **Claim** loss on taxes to offset other gains
+        4. **Maintain** same market exposure
+        
+        **Example:**
+        - Sell VTI at a $5,000 loss
+        - Buy ITOT (tracks same index, different fund)
+        - Same market exposure, but now have $5,000 tax loss
+        - Tax savings: $5,000 × 20% = $1,000
+        
+        **⚠️ Wash Sale Rule:** Must wait 30 days before buying back the original security.
+        Our swaps avoid this by using different ETFs that track the same index.
+    """)
+    
+    st.markdown("---")
+    st.markdown("### 💼 Your Holdings Analysis")
+    
+    # Get user to input cost basis
+    st.markdown("#### Enter Your Cost Basis")
+    st.caption("For each holding, enter what you originally paid (your cost basis)")
+    
+    holdings_data = []
+    for ticker in weights.keys():
+        col1, col2, col3 = st.columns([2, 2, 2])
+        
+        with col1:
+            st.markdown(f"**{ticker}**")
+        
+        with col2:
+            # Get current price
+            ticker_data = download_ticker_data([ticker], current['end_date'] - timedelta(days=5), current['end_date'])
+            if ticker_data is not None and not ticker_data.empty:
+                current_price = ticker_data.iloc[-1].values[0]
+                st.metric("Current Price", f"${current_price:.2f}")
+            else:
+                current_price = 100.0
+                st.metric("Current Price", "N/A")
+        
+        with col3:
+            cost_basis = st.number_input(
+                "Your Cost Basis ($)",
+                min_value=0.0,
+                max_value=10000.0,
+                value=current_price,
+                step=0.01,
+                key=f"cost_basis_{ticker}",
+                help="What you originally paid per share"
+            )
+        
+        # Calculate gain/loss
+        gain_loss = current_price - cost_basis
+        gain_loss_pct = (gain_loss / cost_basis * 100) if cost_basis > 0 else 0
+        
+        holdings_data.append({
+            'ticker': ticker,
+            'cost_basis': cost_basis,
+            'current_price': current_price,
+            'gain_loss': gain_loss,
+            'gain_loss_pct': gain_loss_pct
+        })
+    
+    # Show holdings with gains/losses
+    st.markdown("---")
+    st.markdown("### 📊 Gain/Loss Summary")
+    
+    summary_data = []
+    for holding in holdings_data:
+        summary_data.append({
+            'Ticker': holding['ticker'],
+            'Cost Basis': f"${holding['cost_basis']:.2f}",
+            'Current Price': f"${holding['current_price']:.2f}",
+            'Gain/Loss': f"${holding['gain_loss']:+.2f}",
+            'Gain/Loss %': f"{holding['gain_loss_pct']:+.1f}%",
+            'Status': '📈 Gain' if holding['gain_loss'] > 0 else '📉 Loss'
+        })
+    
+    summary_df = pd.DataFrame(summary_data)
+    st.dataframe(summary_df, use_container_width=True, hide_index=True)
+    
+    # Identify harvest opportunities
+    st.markdown("---")
+    st.markdown("### 🎯 Tax Loss Harvesting Opportunities")
+    
+    # Map of ETF swaps that avoid wash sale
+    swap_map = {
+        'SPY': {'swap_to': 'VOO', 'name': 'Vanguard S&P 500', 'note': 'Identical index, lower fees'},
+        'VOO': {'swap_to': 'IVV', 'name': 'iShares Core S&P 500', 'note': 'Identical index'},
+        'IVV': {'swap_to': 'SPY', 'name': 'SPDR S&P 500', 'note': 'Identical index'},
+        'QQQ': {'swap_to': 'QQQM', 'name': 'Invesco NASDAQ 100', 'note': 'Identical index, lower fees'},
+        'QQQM': {'swap_to': 'QQQ', 'name': 'Invesco QQQ Trust', 'note': 'Identical index'},
+        'VTI': {'swap_to': 'ITOT', 'name': 'iShares Core Total US', 'note': 'Same exposure'},
+        'ITOT': {'swap_to': 'VTI', 'name': 'Vanguard Total Market', 'note': 'Same exposure'},
+        'IWM': {'swap_to': 'VTWO', 'name': 'Vanguard Russell 2000', 'note': 'Identical index'},
+        'VTWO': {'swap_to': 'VB', 'name': 'Vanguard Small-Cap', 'note': 'Similar exposure'},
+        'AGG': {'swap_to': 'BND', 'name': 'Vanguard Total Bond', 'note': 'Identical exposure'},
+        'BND': {'swap_to': 'AGG', 'name': 'iShares Aggregate Bond', 'note': 'Identical exposure'},
+    }
+    
+    harvest_opportunities = []
+    for holding in holdings_data:
+        if holding['gain_loss'] < -100:  # Loss of at least $100
+            ticker = holding['ticker']
+            if ticker in swap_map:
+                swap_info = swap_map[ticker]
+                
+                # Estimate position size
+                portfolio_value = 100000  # Default
+                position_value = portfolio_value * weights[ticker]
+                shares = position_value / holding['current_price']
+                total_loss = holding['gain_loss'] * shares
+                
+                harvest_opportunities.append({
+                    'Sell': ticker,
+                    'Buy': swap_info['swap_to'],
+                    'Alternative': swap_info['name'],
+                    'Estimated Loss': f"${total_loss:,.0f}",
+                    'Tax Savings (20%)': f"${abs(total_loss) * 0.20:,.0f}",
+                    'Note': swap_info['note']
+                })
+    
+    if harvest_opportunities:
+        st.success(f"**Found {len(harvest_opportunities)} tax loss harvesting opportunity(ies):**")
+        
+        harvest_df = pd.DataFrame(harvest_opportunities)
+        st.dataframe(harvest_df, use_container_width=True, hide_index=True)
+        
+        total_losses = sum(abs(h['gain_loss']) for h in holdings_data if h['gain_loss'] < 0)
+        portfolio_value = st.number_input(
+            "Your actual portfolio value ($)",
+            min_value=1000,
+            max_value=100000000,
+            value=100000,
+            help="Enter to calculate accurate tax savings"
+        )
+        
+        # Recalculate with actual portfolio value
+        total_tax_loss = sum(
+            weights[h['ticker']] * portfolio_value * (h['gain_loss'] / h['current_price'])
+            for h in holdings_data if h['gain_loss'] < 0
+        )
+        
+        tax_savings = abs(total_tax_loss) * 0.20  # Assume 20% capital gains rate
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Total Harvestable Loss", f"${abs(total_tax_loss):,.0f}")
+        with col2:
+            st.metric("Estimated Tax Savings", f"${tax_savings:,.0f}",
+                     help="Assumes 20% long-term capital gains rate")
+        
+        st.markdown("""
+            <div class="interpretation-box">
+                <div class="interpretation-title">💡 Action Plan</div>
+                <p><strong>How to Execute:</strong></p>
+                <ol>
+                    <li>Sell the positions listed in "Sell" column</li>
+                    <li>Immediately buy the alternatives in "Buy" column</li>
+                    <li>Wait at least 31 days before buying back original ETF (if desired)</li>
+                    <li>Claim the loss on your tax return to offset other gains</li>
+                </ol>
+                <p><strong>⚠️ Important:</strong></p>
+                <ul>
+                    <li>Only works in taxable accounts (not IRA/401k)</li>
+                    <li>Only use for losses, not gains</li>
+                    <li>Must avoid wash sale rule (30 days)</li>
+                    <li>Consult a tax professional for your specific situation</li>
+                </ul>
+            </div>
+        """, unsafe_allow_html=True)
+    
+    else:
+        st.info("""
+            **No Tax Loss Harvesting Opportunities Found**
+            
+            Reasons could be:
+            - All your positions are showing gains (good problem to have!)
+            - Losses are too small to be worth harvesting (<$100 per position)
+            - Your holdings don't have suitable swap alternatives in our database
+            
+            Check back during market downturns - that's when harvesting opportunities appear!
+        """)
 
 
 # =============================================================================
